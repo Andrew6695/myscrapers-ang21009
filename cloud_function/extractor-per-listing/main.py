@@ -149,6 +149,26 @@ def parse_listing(text: str) -> dict:
     if mi is not None:
         d["mileage"] = mi
 
+    # clean title flag
+    if re.search(r"\bclean title\b|\btitle in hand\b", text, re.I):
+        d["clean_title_flag"] = 1
+    else:
+        d["clean_title_flag"] = 0
+
+    # vehicle age
+    if "year" in d:
+        d["vehicle_age"] = 2026 - d["year"]
+
+    # miles per year
+    if "mileage" in d and "vehicle_age" in d and d["vehicle_age"] > 0:
+        d["miles_per_year"] = int(d["mileage"] / d["vehicle_age"])
+
+    # price per 10k miles
+    if "price" in d and "mileage" in d and d["mileage"] > 0:
+        d["price_per_10k_miles"] = round(d["price"] / (d["mileage"] / 10000), 2)
+
+
+
     return d
 
 # -------------------- HTTP ENTRY --------------------
