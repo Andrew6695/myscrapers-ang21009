@@ -1,7 +1,7 @@
 # main.py
 # Build a single, ever-growing CSV from all structured JSONL files.
 # Reads:  gs://<bucket>/<STRUCTURED_PREFIX>/run_id=*/jsonl/*.jsonl
-# Writes: gs://<bucket>/<STRUCTURED_PREFIX>/datasets/listings_master.csv  (atomic publish)
+# Writes: gs://<bucket>/<STRUCTURED_PREFIX>/datasets/listings_master_v2.csv  (atomic publish)
 
 import csv
 import io
@@ -28,6 +28,7 @@ RUN_ID_PLAIN_RE = re.compile(r"^\d{14}$")        # 20251026170002
 CSV_COLUMNS = [
     "post_id", "run_id", "scraped_at",
     "price", "year", "make", "model", "mileage",
+    "clean_title_flag", "vehicle_age", "miles_per_year", "price_per_10k_miles",
     "source_txt"
 ]
 
@@ -94,7 +95,7 @@ def materialize_http(request: Request):
     """
     HTTP POST (no body needed).
     Crawls ALL structured run folders, de-dupes by post_id (keep newest run),
-    and writes one CSV directly to .../datasets/listings_master.csv.
+    and writes one CSV directly to .../datasets/listings_master_v2.csv.
     Returns JSON with counts and output path.
     """
     try:
@@ -105,9 +106,14 @@ def materialize_http(request: Request):
         if not run_ids:
             return jsonify({"ok": False, "error": f"no runs found under {STRUCTURED_PREFIX}/"}), 200
 
+        run_ids = run_ids[-1:]
+
         latest_by_post: Dict[str, Dict] = {}
         for rid in run_ids:
             for rec in _jsonl_records_for_run(BUCKET_NAME, STRUCTURED_PREFIX, rid):
+                if not any(k in rec for k in ["clean_title_flag", "vehicle_age", "miles_per_year", "price_per_10k_miles"]):
+                    continue
+
                 pid = rec.get("post_id")
                 if not pid:
                     continue
@@ -116,7 +122,7 @@ def materialize_http(request: Request):
                     latest_by_post[pid] = rec
 
         base = f"{STRUCTURED_PREFIX}/datasets"
-        final_key = f"{base}/listings_master.csv"
+        final_key = f"{base}/listings_master_v2.csv"
         rows = _write_csv(latest_by_post.values(), final_key)
 
         return jsonify({

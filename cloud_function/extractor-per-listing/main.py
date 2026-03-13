@@ -40,6 +40,21 @@ PRICE_RE      = re.compile(r"\$\s?([0-9,]+)")
 YEAR_RE       = re.compile(r"\b(19|20)\d{2}\b")
 MAKE_MODEL_RE = re.compile(r"\b([A-Z][a-z]+)\s+([A-Z][A-Za-z0-9]+)")
 
+VALID_MAKES = {
+    "Acura", "Audi", "BMW", "Buick", "Cadillac", "Chevrolet", "Chevy",
+    "Chrysler", "Dodge", "Ford", "GMC", "Honda", "Hyundai", "Infiniti",
+    "Jaguar", "Jeep", "Kia", "Lexus", "Lincoln", "Mazda", "Mercedes",
+    "Mercury", "Mini", "Mitsubishi", "Nissan", "Pontiac", "Ram",
+    "Subaru", "Toyota", "Volkswagen", "Volvo"
+}
+
+BANNED_TOKENS = {
+    "Contact", "Information", "New", "North", "South", "East", "West",
+    "Buy", "Here", "River", "Haven", "Hartford", "Glastonbury",
+    "Saybrook", "Milford", "Orange", "Deep", "Sport", "SUV",
+    "Sedan", "Coupe", "Super", "Duty"
+}
+
 # -------------------- HELPERS --------------------
 def _list_run_ids(bucket: str, scrapes_prefix: str) -> list[str]:
     """
@@ -127,27 +142,62 @@ def parse_listing(text: str) -> dict:
 
     mm = MAKE_MODEL_RE.search(text)
     if mm:
-        d["make"] = mm.group(1)
-        d["model"] = mm.group(2)
+        make_candidate = mm.group(1)
+        model_candidate = mm.group(2)
+
+        if (
+            make_candidate in VALID_MAKES
+            and make_candidate not in BANNED_TOKENS
+            and model_candidate not in BANNED_TOKENS
+        ):
+            d["make"] = make_candidate
+            d["model"] = model_candidate
 
     # mileage variants
     mi = None
     m1 = re.search(r"(?:mileage|odometer)\s*[:\-]?\s*([\d,]+)", text, re.I)
     if m1:
-        try: mi = int(m1.group(1).replace(",", ""))
-        except ValueError: mi = None
+        try:
+            mi = int(m1.group(1).replace(",", ""))
+        except ValueError:
+            mi = None
+
     if mi is None:
         m2 = re.search(r"(\d+(?:\.\d+)?)\s*k\s*(?:mi|mile|miles)\b", text, re.I)
         if m2:
-            try: mi = int(float(m2.group(1)) * 1000)
-            except ValueError: mi = None
+            try:
+                mi = int(float(m2.group(1)) * 1000)
+            except ValueError:
+                mi = None
+
     if mi is None:
         m3 = re.search(r"(\d{1,3}(?:[,\d]{3})*)\s*(?:mi|mile|miles)\b", text, re.I)
         if m3:
-            try: mi = int(re.sub(r"[^\d]", "", m3.group(1)))
-            except ValueError: mi = None
+            try:
+                mi = int(re.sub(r"[^\d]", "", m3.group(1)))
+            except ValueError:
+                mi = None
+
     if mi is not None:
         d["mileage"] = mi
+
+    # clean title flag
+    if re.search(r"\bclean title\b|\btitle in hand\b", text, re.I):
+        d["clean_title_flag"] = 1
+    else:
+        d["clean_title_flag"] = 0
+
+    # vehicle age
+    if "year" in d:
+        d["vehicle_age"] = 2026 - d["year"]
+
+    # miles per year
+    if "mileage" in d and "vehicle_age" in d and d["vehicle_age"] > 0:
+        d["miles_per_year"] = int(d["mileage"] / d["vehicle_age"])
+
+    # price per 10k miles
+    if "price" in d and "mileage" in d and d["mileage"] > 0:
+        d["price_per_10k_miles"] = round(d["price"] / (d["mileage"] / 10000), 2)
 
     return d
 
