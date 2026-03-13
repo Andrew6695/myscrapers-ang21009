@@ -140,18 +140,40 @@ def parse_listing(text: str) -> dict:
         except ValueError:
             pass
 
-    mm = MAKE_MODEL_RE.search(text)
-    if mm:
-        make_candidate = mm.group(1)
-        model_candidate = mm.group(2)
+    # try to parse make/model from the first non-empty line, which is usually the title
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    title_line = lines[0] if lines else ""
 
-        if (
-            make_candidate in VALID_MAKES
-            and make_candidate not in BANNED_TOKENS
-            and model_candidate not in BANNED_TOKENS
-        ):
-            d["make"] = make_candidate
-            d["model"] = model_candidate
+    found_make = None
+    for make in sorted(VALID_MAKES, key=len, reverse=True):
+        if re.search(rf"\b{re.escape(make)}\b", title_line, re.I):
+            found_make = make
+            break
+
+    if found_make:
+        d["make"] = found_make
+
+        model_part = re.split(rf"\b{re.escape(found_make)}\b", title_line, maxsplit=1, flags=re.I)
+        if len(model_part) > 1:
+            model_tokens = model_part[1].strip().split()
+            if model_tokens:
+                first_model_token = re.sub(r"[^A-Za-z0-9-]", "", model_tokens[0])
+                if first_model_token and first_model_token not in BANNED_TOKENS:
+                    d["model"] = first_model_token
+    else:
+        # fallback to the old regex-based parser if no valid make is found in the title
+        mm = MAKE_MODEL_RE.search(text)
+        if mm:
+            make_candidate = mm.group(1)
+            model_candidate = mm.group(2)
+
+            if (
+                make_candidate in VALID_MAKES
+                and make_candidate not in BANNED_TOKENS
+                and model_candidate not in BANNED_TOKENS
+            ):
+                d["make"] = make_candidate
+                d["model"] = model_candidate
 
     # mileage variants
     mi = None
