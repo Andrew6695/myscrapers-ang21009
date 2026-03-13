@@ -111,9 +111,6 @@ def materialize_http(request: Request):
         latest_by_post: Dict[str, Dict] = {}
         for rid in run_ids:
             for rec in _jsonl_records_for_run(BUCKET_NAME, STRUCTURED_PREFIX, rid):
-                if not any(k in rec for k in ["clean_title_flag", "vehicle_age", "miles_per_year", "price_per_10k_miles"]):
-                    continue
-
                 pid = rec.get("post_id")
                 if not pid:
                     continue
