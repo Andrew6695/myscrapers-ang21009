@@ -156,7 +156,7 @@ def _safe_int(x):
 # -------------------- VERTEX AI CALL --------------------
 def _vertex_extract_fields(raw_text: str) -> dict:
     """
-    Ask Gemini to return JSON with exactly: price, year, make, model, mileage.
+    Ask Gemini to return JSON with exactly: price, year, make, model, mileage, color.
     """
     model = _get_vertex_model()
 
@@ -169,16 +169,20 @@ def _vertex_extract_fields(raw_text: str) -> dict:
             "make": {"type": "string", "nullable": True},
             "model": {"type": "string", "nullable": True},
             "mileage": {"type": "integer", "nullable": True},
+            "color": {"type": "string", "nullable": True}
         },
-        "required": ["price", "year", "make", "model", "mileage"]
+        "required": ["price", "year", "make", "model", "mileage", "color"]
     }
 
     # System instruction (will be prepended to the prompt)
     sys_instr = (
         "Extract ONLY the following fields from the input text. "
+        "price, year, make, model, mileage, color. "
         "Return a strict JSON object that conforms to the provided schema. "
         "If a value is not present, use null. "
         "Rules: integers for price/year/mileage; price in USD; mileage in miles; "
+        "color must be the vehicle's exterior color if explicitly stated; "
+        "examples of color values include green, red, black, white, silver, blue; "
         "do not infer values not explicitly present; do not add extra keys."
     )
 
@@ -230,6 +234,7 @@ def _vertex_extract_fields(raw_text: str) -> dict:
 
     parsed["make"] = _norm_str(parsed.get("make"))
     parsed["model"] = _norm_str(parsed.get("model"))
+    parsed["color"] = _norm_str(parsed.get("color"))
 
     return parsed
 
@@ -318,6 +323,7 @@ def llm_extract_http(request: Request):
                 "make": parsed.get("make"),
                 "model": parsed.get("model"),
                 "mileage": parsed.get("mileage"),
+                "color": parsed.get("color"),
                 "llm_provider": "vertex",
                 "llm_model": LLM_MODEL,
                 "llm_ts": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
