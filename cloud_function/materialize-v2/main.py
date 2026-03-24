@@ -1,7 +1,10 @@
 # main.py
 # Build a single, ever-growing CSV from all structured JSONL files.
-# Reads:  gs://<bucket>/<STRUCTURED_PREFIX>/run_id=*/jsonl/*.jsonl
-# Writes: gs://<bucket>/<STRUCTURED_PREFIX>/datasets/listings_master.csv  (atomic publish)
+# Reads:
+#   gs://<bucket>/<STRUCTURED_PREFIX>/run_id=*/jsonl/*.jsonl
+#   gs://<bucket>/<STRUCTURED_PREFIX>/run_id=*/jsonl_llm/*.jsonl
+# Writes:
+#   gs://<bucket>/<STRUCTURED_PREFIX>/datasets/listings_master_v2.csv
 
 import csv
 import io
@@ -27,7 +30,7 @@ RUN_ID_PLAIN_RE = re.compile(r"^\d{14}$")        # 20251026170002
 # Stable CSV schema for students
 CSV_COLUMNS = [
     "post_id", "run_id", "scraped_at",
-    "price", "year", "make", "model", "mileage",
+    "price", "year", "make", "model", "mileage", "color",
     "clean_title_flag", "vehicle_age", "miles_per_year", "price_per_10k_miles",
     "source_txt"
 ]
@@ -51,23 +54,53 @@ def _list_run_ids(bucket: str, structured_prefix: str) -> list[str]:
     return sorted(run_ids)
 
 def _jsonl_records_for_run(bucket: str, structured_prefix: str, run_id: str):
-    """Yield dict records from .jsonl under .../run_id=<run_id>/jsonl/ (one JSON per file)."""
+    """
+    Yield merged dict records for a run:
+    - base fields from .../jsonl/
+    - LLM fields from .../jsonl_llm/
+    Matched by post_id.
+    """
     b = storage_client.bucket(bucket)
-    prefix = f"{structured_prefix}/run_id={run_id}/jsonl/"
-    for blob in b.list_blobs(prefix=prefix):
+
+    base_prefix = f"{structured_prefix}/run_id={run_id}/jsonl/"
+    llm_prefix = f"{structured_prefix}/run_id={run_id}/jsonl_llm/"
+
+    base_by_post = {}
+    llm_by_post = {}
+
+    for blob in b.list_blobs(prefix=base_prefix):
         if not blob.name.endswith(".jsonl"):
             continue
-        data = blob.download_as_text()
-        line = data.strip()
-        if not line:
-            continue
         try:
-            rec = json.loads(line)
-            # ensure required keys exist
-            rec.setdefault("run_id", run_id)
-            yield rec
+            rec = json.loads(blob.download_as_text().strip())
+            pid = rec.get("post_id")
+            if pid:
+                rec.setdefault("run_id", run_id)
+                base_by_post[pid] = rec
         except Exception:
             continue
+
+    for blob in b.list_blobs(prefix=llm_prefix):
+        if not blob.name.endswith(".jsonl"):
+            continue
+        try:
+            rec = json.loads(blob.download_as_text().strip())
+            pid = rec.get("post_id")
+            if pid:
+                rec.setdefault("run_id", run_id)
+                llm_by_post[pid] = rec
+        except Exception:
+            continue
+
+    all_post_ids = set(base_by_post) | set(llm_by_post)
+
+    for pid in all_post_ids:
+        merged = {}
+        if pid in base_by_post:
+            merged.update(base_by_post[pid])
+        if pid in llm_by_post:
+            merged.update(llm_by_post[pid])  # LLM fields overwrite base fields
+        yield merged
 
 def _run_id_to_dt(rid: str) -> datetime:
     if RUN_ID_ISO_RE.match(rid):
