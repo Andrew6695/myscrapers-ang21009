@@ -170,21 +170,29 @@ def _vertex_extract_fields(raw_text: str) -> dict:
             "model": {"type": "string", "nullable": True},
             "mileage": {"type": "integer", "nullable": True},
             "color": {"type": "string", "nullable": True}
+            "transmission": {"type": "string", "nullable": True},
+            "condition": {"type": "string", "nullable": True},
         },
         "required": ["price", "year", "make", "model", "mileage", "color"]
     }
 
     # System instruction (will be prepended to the prompt)
     sys_instr = (
-        "Extract ONLY the following fields from the input text. "
-        "price, year, make, model, mileage, color. "
+        "Extract ONLY the following fields from the input text: "
+        "price, year, make, model, mileage, color, transmission, condition. "
         "Return a strict JSON object that conforms to the provided schema. "
         "If a value is not present, use null. "
-        "Rules: integers for price/year/mileage; price in USD; mileage in miles; "
+        "Rules: "
+        "price, year, and mileage must be integers; "
+        "price must be in USD; "
+        "mileage must be in miles; "
         "color must be the vehicle's exterior color if explicitly stated; "
-        "examples of color values include green, red, black, white, silver, blue; "
-        "do not infer values not explicitly present; do not add extra keys."
-    )
+        "transmission should be values like automatic or manual if explicitly stated; "
+        "condition should describe the vehicle condition if explicitly stated, "
+        "such as excellent, good, fair, or like new; "
+        "do not infer values not explicitly present; "
+        "do not add extra keys."
+)
 
     # FIX: Combine instruction and text into one prompt string (SDK compatibility)
     prompt = f"{sys_instr}\n\nTEXT:\n{raw_text}"
@@ -235,6 +243,8 @@ def _vertex_extract_fields(raw_text: str) -> dict:
     parsed["make"] = _norm_str(parsed.get("make"))
     parsed["model"] = _norm_str(parsed.get("model"))
     parsed["color"] = _norm_str(parsed.get("color"))
+    parsed["transmission"] = _norm_str(parsed.get("transmission"))
+    parsed["condition"] = _norm_str(parsed.get("condition"))
 
     return parsed
 
@@ -324,6 +334,8 @@ def llm_extract_http(request: Request):
                 "model": parsed.get("model"),
                 "mileage": parsed.get("mileage"),
                 "color": parsed.get("color"),
+                "transmission": parsed.get("transmission"),
+                "condition": parsed.get("condition"),
                 "llm_provider": "vertex",
                 "llm_model": LLM_MODEL,
                 "llm_ts": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
