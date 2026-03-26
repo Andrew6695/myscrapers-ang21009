@@ -128,20 +128,26 @@ def _write_csv(records: Iterable[Dict], dest_key: str, columns=CSV_COLUMNS) -> i
 
 def materialize_http(request: Request):
     """
-    HTTP POST (no body needed).
-    Crawls ALL structured run folders, de-dupes by post_id (keep newest run),
-    writes one CSV directly to .../datasets/listings_master_llm.csv.
+    HTTP POST.
+    Optionally accepts {"run_id": "..."} to materialize a specific LLM run.
+    Writes one CSV directly to .../datasets/listings_master_llm.csv.
     Returns JSON with counts and output path.
     """
     try:
         if not BUCKET_NAME:
             return jsonify({"ok": False, "error": "missing GCS_BUCKET env"}), 500
 
+        body = request.get_json(silent=True) or {}
+        requested_run_id = body.get("run_id")
+
         run_ids = _list_run_ids(BUCKET_NAME, STRUCTURED_PREFIX)
         if not run_ids:
             return jsonify({"ok": False, "error": f"no runs found under {STRUCTURED_PREFIX}/"}), 200
 
-        run_ids = run_ids[-1:]
+        if requested_run_id:
+            run_ids = [requested_run_id]
+        else:
+            run_ids = run_ids[-1:]
 
         latest_by_post: Dict[str, Dict] = {}
         for rid in run_ids:
