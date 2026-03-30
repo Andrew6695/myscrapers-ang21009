@@ -1,3 +1,8 @@
+# ARCHIVED:
+# This function is no longer part of the active pipeline.
+# The active materializer is materialize-master.
+# Kept for reference only.
+
 # main.py
 # Build a single, ever-growing CSV from all structured JSONL files.
 # Reads:  gs://<bucket>/<STRUCTURED_PREFIX>/run_id=*/jsonl_llm/*.jsonl
