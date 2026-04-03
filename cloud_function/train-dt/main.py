@@ -114,6 +114,10 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
         "color",
         "condition",
         "transmission",
+        "body_type",
+        "fuel_type",
+        "drive_type",
+        "title_status",
     ]
 
     candidate_num_cols = [
@@ -178,6 +182,10 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
             "color",
             "condition",
             "transmission",
+            "body_type",
+            "fuel_type",
+            "drive_type",
+            "title_status",
             "clean_title_flag",
             "vehicle_age",
             "miles_per_year",
