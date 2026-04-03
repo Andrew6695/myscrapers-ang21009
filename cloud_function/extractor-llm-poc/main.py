@@ -140,7 +140,8 @@ def _safe_int(x):
 def _vertex_extract_fields(raw_text: str) -> dict:
     """
     Ask Gemini to return JSON with exactly:
-    price, year, make, model, mileage, body_type, fuel_type, drive_type, title_status.
+    price, year, make, model, mileage, color, transmission, condition,
+    body_type, fuel_type, drive_type, title_status.
     """
     model = _get_vertex_model()
 
@@ -152,6 +153,9 @@ def _vertex_extract_fields(raw_text: str) -> dict:
             "make": {"type": "string", "nullable": True},
             "model": {"type": "string", "nullable": True},
             "mileage": {"type": "integer", "nullable": True},
+            "color": {"type": "string", "nullable": True},
+            "transmission": {"type": "string", "nullable": True},
+            "condition": {"type": "string", "nullable": True},
             "body_type": {"type": "string", "nullable": True},
             "fuel_type": {"type": "string", "nullable": True},
             "drive_type": {"type": "string", "nullable": True},
@@ -163,6 +167,9 @@ def _vertex_extract_fields(raw_text: str) -> dict:
             "make",
             "model",
             "mileage",
+            "color",
+            "transmission",
+            "condition",
             "body_type",
             "fuel_type",
             "drive_type",
@@ -172,13 +179,18 @@ def _vertex_extract_fields(raw_text: str) -> dict:
 
     sys_instr = (
         "Extract ONLY the following fields from the input text: "
-        "price, year, make, model, mileage, body_type, fuel_type, drive_type, title_status. "
+        "price, year, make, model, mileage, color, transmission, condition, "
+        "body_type, fuel_type, drive_type, title_status. "
         "Return a strict JSON object that conforms to the provided schema. "
         "If a value is not present, use null. "
         "Rules: "
         "price, year, and mileage must be integers; "
         "price must be in USD; "
         "mileage must be in miles; "
+        "color must be the vehicle's exterior color if explicitly stated; "
+        "transmission should be values like automatic or manual if explicitly stated; "
+        "condition should describe the vehicle condition if explicitly stated, "
+        "such as excellent, good, fair, or like new; "
         "body_type should describe the vehicle style if explicitly stated, "
         "such as sedan, SUV, coupe, hatchback, wagon, pickup, van, or convertible; "
         "fuel_type should describe the fuel if explicitly stated, "
@@ -237,6 +249,9 @@ def _vertex_extract_fields(raw_text: str) -> dict:
 
     parsed["make"] = _norm_str(parsed.get("make"))
     parsed["model"] = _norm_str(parsed.get("model"))
+    parsed["color"] = _norm_str(parsed.get("color"))
+    parsed["transmission"] = _norm_str(parsed.get("transmission"))
+    parsed["condition"] = _norm_str(parsed.get("condition"))
     parsed["body_type"] = _norm_str(parsed.get("body_type"))
     parsed["fuel_type"] = _norm_str(parsed.get("fuel_type"))
     parsed["drive_type"] = _norm_str(parsed.get("drive_type"))
@@ -327,6 +342,9 @@ def llm_extract_http(request: Request):
                 "make": parsed.get("make"),
                 "model": parsed.get("model"),
                 "mileage": parsed.get("mileage"),
+                "color": parsed.get("color"),
+                "transmission": parsed.get("transmission"),
+                "condition": parsed.get("condition"),
                 "body_type": parsed.get("body_type"),
                 "fuel_type": parsed.get("fuel_type"),
                 "drive_type": parsed.get("drive_type"),
