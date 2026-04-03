@@ -12,6 +12,7 @@ import pandas as pd
 from google.cloud import storage
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
+from sklearn.inspection import permutation_importance
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
@@ -43,7 +44,6 @@ def _write_csv_to_gcs(client: storage.Client, bucket: str, key: str, df: pd.Data
 
 
 def _clean_numeric(s: pd.Series) -> pd.Series:
-    # Strip $, commas, spaces; keep digits and dot
     s = s.astype(str).str.replace(r"[^\d.]+", "", regex=True).str.strip()
     return pd.to_numeric(s, errors="coerce")
 
@@ -128,7 +128,6 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
         "miles_per_year",
     ]
 
-    # Only keep columns that actually exist in the dataset
     cat_cols = [c for c in candidate_cat_cols if c in train_df.columns]
     num_cols = [c for c in candidate_num_cols if c in train_df.columns]
     feats = cat_cols + num_cols
@@ -169,6 +168,7 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
     mape_today = None
     bias_today = None
     preds_df = pd.DataFrame()
+    perm_df = pd.DataFrame()
 
     if not holdout_df.empty:
         X_h = holdout_df[feats]
@@ -205,6 +205,7 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
 
             if mask.any():
                 y_true_valid = y_true[mask]
+                X_h_valid = X_h.loc[mask]
                 y_hat_valid = y_hat[mask]
 
                 mae_today = float(mean_absolute_error(y_true_valid, y_hat_valid))
@@ -222,15 +223,41 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
                         ) * 100
                     )
 
+                # Permutation importance on original feature columns
+                perm = permutation_importance(
+                    pipe,
+                    X_h_valid,
+                    y_true_valid,
+                    n_repeats=5,
+                    random_state=42,
+                    scoring="neg_mean_absolute_error",
+                )
+
+                perm_df = pd.DataFrame(
+                    {
+                        "feature": feats,
+                        "importance_mean": perm.importances_mean,
+                        "importance_std": perm.importances_std,
+                    }
+                ).sort_values("importance_mean", ascending=False)
+
     # --- Output path: HOURLY folder structure ---
     now_utc = pd.Timestamp.utcnow().tz_convert("UTC")
-    out_key = f"{OUTPUT_PREFIX}/{now_utc.strftime('%Y%m%d%H')}/preds.csv"
+    out_dir = f"{OUTPUT_PREFIX}/{now_utc.strftime('%Y%m%d%H')}"
+    preds_key = f"{out_dir}/preds.csv"
+    perm_key = f"{out_dir}/perm_importance.csv"
 
     if not dry_run and len(preds_df) > 0:
-        _write_csv_to_gcs(client, GCS_BUCKET, out_key, preds_df)
-        logging.info("Wrote predictions to gs://%s/%s (%d rows)", GCS_BUCKET, out_key, len(preds_df))
+        _write_csv_to_gcs(client, GCS_BUCKET, preds_key, preds_df)
+        logging.info("Wrote predictions to gs://%s/%s (%d rows)", GCS_BUCKET, preds_key, len(preds_df))
     else:
-        logging.info("Dry run or no holdout rows; skip write. Would write to gs://%s/%s", GCS_BUCKET, out_key)
+        logging.info("Dry run or no holdout rows; skip preds write. Would write to gs://%s/%s", GCS_BUCKET, preds_key)
+
+    if not dry_run and len(perm_df) > 0:
+        _write_csv_to_gcs(client, GCS_BUCKET, perm_key, perm_df)
+        logging.info("Wrote permutation importance to gs://%s/%s (%d rows)", GCS_BUCKET, perm_key, len(perm_df))
+    else:
+        logging.info("Dry run or no permutation importance; skip perm write. Would write to gs://%s/%s", GCS_BUCKET, perm_key)
 
     return {
         "status": "ok",
@@ -242,7 +269,8 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
         "rmse_today": rmse_today,
         "mape_today": mape_today,
         "bias_today": bias_today,
-        "output_key": out_key,
+        "preds_key": preds_key,
+        "perm_importance_key": perm_key,
         "dry_run": dry_run,
         "timezone": TIMEZONE,
     }
