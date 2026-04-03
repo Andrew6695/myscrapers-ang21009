@@ -10,14 +10,14 @@ from flask import Request, jsonify
 from google.cloud import storage
 
 # -------------------- ENV --------------------
-BUCKET_NAME = os.getenv("GCS_BUCKET")                         # REQUIRED
+BUCKET_NAME = os.getenv("GCS_BUCKET")
 STRUCTURED_PREFIX = os.getenv("STRUCTURED_PREFIX", "structured")
 
 storage_client = storage.Client()
 
 # Accept BOTH runIDs:
-RUN_ID_ISO_RE = re.compile(r"^\d{8}T\d{6}Z$")   # 20251026T170002Z
-RUN_ID_PLAIN_RE = re.compile(r"^\d{14}$")       # 20251026170002
+RUN_ID_ISO_RE = re.compile(r"^\d{8}T\d{6}Z$")
+RUN_ID_PLAIN_RE = re.compile(r"^\d{14}$")
 
 # Stable CSV schema for students
 CSV_COLUMNS = [
@@ -154,26 +154,34 @@ def _get_existing_master_data(bucket_name: str, key: str) -> Dict[str, Dict]:
 def materialize_http(request: Request):
     """
     HTTP POST:
-    1. Filter runs for only the last ~75 minutes.
-    2. Load existing master CSV.
-    3. Merge recent run data into master by post_id.
-    4. Overwrite the master CSV in GCS.
+    - If body includes {"run_ids": [...]}, materialize exactly those runs.
+    - Otherwise, default to runs from the last ~75 minutes.
+    - Merge into listings_master_llm.csv by post_id, keeping the newest run.
     """
     try:
         if not BUCKET_NAME:
             return jsonify({"ok": False, "error": "missing GCS_BUCKET env"}), 500
 
-        all_run_ids = _list_run_ids(BUCKET_NAME, STRUCTURED_PREFIX)
-        limit_time = datetime.now(timezone.utc) - timedelta(minutes=75)
-        recent_runs = [r for r in all_run_ids if _run_id_to_dt(r) > limit_time]
+        body = request.get_json(silent=True) or {}
+        requested_run_ids = body.get("run_ids")
 
-        if not recent_runs:
-            return jsonify({"ok": True, "message": "No new runs found in the last hour"}), 200
+        all_run_ids = _list_run_ids(BUCKET_NAME, STRUCTURED_PREFIX)
+
+        if requested_run_ids:
+            if not isinstance(requested_run_ids, list):
+                return jsonify({"ok": False, "error": "run_ids must be a list"}), 400
+            selected_runs = [r for r in requested_run_ids if r in all_run_ids]
+        else:
+            limit_time = datetime.now(timezone.utc) - timedelta(minutes=75)
+            selected_runs = [r for r in all_run_ids if _run_id_to_dt(r) > limit_time]
+
+        if not selected_runs:
+            return jsonify({"ok": True, "message": "No matching runs found"}), 200
 
         final_key = f"{STRUCTURED_PREFIX}/datasets/listings_master_llm.csv"
         master_records = _get_existing_master_data(BUCKET_NAME, final_key)
 
-        for rid in recent_runs:
+        for rid in selected_runs:
             for rec in _jsonl_records_for_run(BUCKET_NAME, STRUCTURED_PREFIX, rid):
                 pid = rec.get("post_id")
                 if not pid:
@@ -187,7 +195,8 @@ def materialize_http(request: Request):
 
         return jsonify({
             "ok": True,
-            "recent_runs_scanned": len(recent_runs),
+            "runs_scanned": len(selected_runs),
+            "run_ids": selected_runs,
             "total_listings_in_master": rows_written,
             "output_csv": f"gs://{BUCKET_NAME}/{final_key}"
         }), 200
