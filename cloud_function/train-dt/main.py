@@ -12,7 +12,7 @@ import pandas as pd
 from google.cloud import storage
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
-from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.tree import DecisionTreeRegressor
@@ -165,6 +165,9 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
 
     # ---- Predict/evaluate on today's holdout ----
     mae_today = None
+    rmse_today = None
+    mape_today = None
+    bias_today = None
     preds_df = pd.DataFrame()
 
     if not holdout_df.empty:
@@ -199,8 +202,25 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
         if holdout_df["price_num"].notna().any():
             y_true = holdout_df["price_num"]
             mask = y_true.notna()
+
             if mask.any():
-                mae_today = float(mean_absolute_error(y_true[mask], y_hat[mask]))
+                y_true_valid = y_true[mask]
+                y_hat_valid = y_hat[mask]
+
+                mae_today = float(mean_absolute_error(y_true_valid, y_hat_valid))
+                rmse_today = float(np.sqrt(mean_squared_error(y_true_valid, y_hat_valid)))
+                bias_today = float(np.mean(y_hat_valid - y_true_valid))
+
+                nonzero_mask = y_true_valid != 0
+                if nonzero_mask.any():
+                    mape_today = float(
+                        np.mean(
+                            np.abs(
+                                (y_true_valid[nonzero_mask] - y_hat_valid[nonzero_mask])
+                                / y_true_valid[nonzero_mask]
+                            )
+                        ) * 100
+                    )
 
     # --- Output path: HOURLY folder structure ---
     now_utc = pd.Timestamp.utcnow().tz_convert("UTC")
@@ -219,6 +239,9 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
         "holdout_rows": int(len(holdout_df)),
         "valid_price_rows": valid_price_rows,
         "mae_today": mae_today,
+        "rmse_today": rmse_today,
+        "mape_today": mape_today,
+        "bias_today": bias_today,
         "output_key": out_key,
         "dry_run": dry_run,
         "timezone": TIMEZONE,
