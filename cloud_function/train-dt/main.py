@@ -1,4 +1,4 @@
-# Decision Tree: train on all data < today (local TZ); hold out today
+# Random Forest: train on all data < today (local TZ); hold out today
 # HTTP entrypoint: train_dt_http
 
 import os
@@ -15,20 +15,20 @@ import numpy as np
 import pandas as pd
 from google.cloud import storage
 from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.inspection import permutation_importance, PartialDependenceDisplay
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.tree import DecisionTreeRegressor
 
 # ---- ENV ----
 PROJECT_ID = os.getenv("PROJECT_ID", "")
 GCS_BUCKET = os.getenv("GCS_BUCKET", "")
 DATA_KEY = os.getenv("DATA_KEY", "structured/datasets/listings_master.csv")
-OUTPUT_PREFIX = os.getenv("OUTPUT_PREFIX", "preds")  # e.g., "structured/preds"
-TIMEZONE = os.getenv("TIMEZONE", "America/New_York")  # split by local day
+OUTPUT_PREFIX = os.getenv("OUTPUT_PREFIX", "preds")
+TIMEZONE = os.getenv("TIMEZONE", "America/New_York")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 logging.basicConfig(level=LOG_LEVEL, format="%(asctime)s %(levelname)s %(message)s")
@@ -72,7 +72,7 @@ def _clean_cat(s: pd.Series) -> pd.Series:
     return s
 
 
-def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int = 10):
+def run_once(dry_run: bool = False):
     client = storage.Client(project=PROJECT_ID)
     df = _read_csv_from_gcs(client, GCS_BUCKET, DATA_KEY)
 
@@ -90,7 +90,7 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
         df["scraped_at_local"] = df["scraped_at_dt_utc"]
     df["date_local"] = df["scraped_at_local"].dt.date
 
-    # --- Clean numerics BEFORE counting/dropping ---
+    # --- Clean fields ---
     orig_rows = len(df)
     df["price_num"] = _clean_numeric(df["price"])
     df["year_num"] = _clean_numeric(df["year"])
@@ -143,7 +143,6 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
     if len(train_df) < 40:
         return {"status": "noop", "reason": "too few training rows", "train_rows": int(len(train_df))}
 
-    # --- Model: expanded feature set -> price_num ---
     target = "price_num"
 
     candidate_cat_cols = [
@@ -190,14 +189,16 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
     X_train = train_df[feats]
     y_train = train_df[target]
 
-    base_model = DecisionTreeRegressor(random_state=42)
+    base_model = RandomForestRegressor(
+        random_state=42,
+        n_jobs=-1,
+    )
     pipe = Pipeline([("pre", pre), ("model", base_model)])
 
     param_grid = {
-        "model__max_depth": [6, 10, 14, 18, None],
-        "model__min_samples_leaf": [1, 2, 5, 10],
-        "model__min_samples_split": [2, 5, 10],
-        "model__criterion": ["squared_error", "absolute_error"],
+        "model__n_estimators": [100, 200],
+        "model__max_depth": [10, 20, None],
+        "model__min_samples_leaf": [1, 2, 5],
     }
 
     grid = GridSearchCV(
@@ -216,7 +217,6 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
     logging.info("Best params from grid search: %s", best_params)
     logging.info("Best CV MAE: %.4f", best_cv_mae)
 
-    # ---- Predict/evaluate on today's holdout ----
     mae_today = None
     rmse_today = None
     mape_today = None
@@ -278,7 +278,6 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
                         ) * 100
                     )
 
-                # Permutation importance on original feature columns
                 perm = permutation_importance(
                     pipe,
                     X_h_valid,
@@ -296,7 +295,6 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
                     }
                 ).sort_values("importance_mean", ascending=False)
 
-                # PDPs: numeric-only, top 3 by permutation importance
                 top_numeric_features = [
                     feat for feat in perm_df["feature"].tolist()
                     if feat in num_cols
@@ -318,7 +316,6 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
 
                     plt.close(fig)
 
-    # --- Output path: HOURLY folder structure ---
     now_utc = pd.Timestamp.utcnow().tz_convert("UTC")
     out_dir = f"{OUTPUT_PREFIX}/{now_utc.strftime('%Y%m%d%H')}"
     preds_key = f"{out_dir}/preds.csv"
@@ -372,8 +369,6 @@ def train_dt_http(request):
         body = request.get_json(silent=True) or {}
         result = run_once(
             dry_run=bool(body.get("dry_run", False)),
-            max_depth=int(body.get("max_depth", 12)),
-            min_samples_leaf=int(body.get("min_samples_leaf", 10)),
         )
         code = 200 if result.get("status") in {"ok", "noop"} else 500
         return (json.dumps(result), code, {"Content-Type": "application/json"})
