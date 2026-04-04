@@ -62,12 +62,12 @@ def _clean_numeric(s: pd.Series) -> pd.Series:
 
 
 def _clean_cat(s: pd.Series) -> pd.Series:
-    s = s.astype("string").str.strip().str.lower()
+    s = s.astype(str).str.strip().str.lower()
     s = s.replace({
-        "": pd.NA,
-        "nan": pd.NA,
-        "none": pd.NA,
-        "null": pd.NA,
+        "": np.nan,
+        "nan": np.nan,
+        "none": np.nan,
+        "null": np.nan,
     })
     return s
 
