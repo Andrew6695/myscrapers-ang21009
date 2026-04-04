@@ -61,6 +61,17 @@ def _clean_numeric(s: pd.Series) -> pd.Series:
     return pd.to_numeric(s, errors="coerce")
 
 
+def _clean_cat(s: pd.Series) -> pd.Series:
+    s = s.astype("string").str.strip().str.lower()
+    s = s.replace({
+        "": pd.NA,
+        "nan": pd.NA,
+        "none": pd.NA,
+        "null": pd.NA,
+    })
+    return s
+
+
 def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int = 10):
     client = storage.Client(project=PROJECT_ID)
     df = _read_csv_from_gcs(client, GCS_BUCKET, DATA_KEY)
@@ -84,6 +95,20 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
     df["price_num"] = _clean_numeric(df["price"])
     df["year_num"] = _clean_numeric(df["year"])
     df["mileage_num"] = _clean_numeric(df["mileage"])
+
+    for c in [
+        "make",
+        "model",
+        "color",
+        "condition",
+        "transmission",
+        "body_type",
+        "fuel_type",
+        "drive_type",
+        "title_status",
+    ]:
+        if c in df.columns:
+            df[c] = _clean_cat(df[c])
 
     valid_price_rows = int(df["price_num"].notna().sum())
     logging.info("Rows total=%d | with valid numeric price=%d", orig_rows, valid_price_rows)
@@ -134,11 +159,9 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
     ]
 
     candidate_num_cols = [
-        "year_num",
         "mileage_num",
-        "clean_title_flag",
         "vehicle_age",
-        "miles_per_year",
+        "clean_title_flag",
     ]
 
     cat_cols = [c for c in candidate_cat_cols if c in train_df.columns]
@@ -171,8 +194,10 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
     pipe = Pipeline([("pre", pre), ("model", base_model)])
 
     param_grid = {
-        "model__max_depth": [6, 10, 14],
-        "model__min_samples_leaf": [5, 10, 20],
+        "model__max_depth": [6, 10, 14, 18, None],
+        "model__min_samples_leaf": [1, 2, 5, 10],
+        "model__min_samples_split": [2, 5, 10],
+        "model__criterion": ["squared_error", "absolute_error"],
     }
 
     grid = GridSearchCV(
