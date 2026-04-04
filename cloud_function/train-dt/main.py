@@ -6,13 +6,17 @@ import io
 import json
 import logging
 import traceback
+import tempfile
 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from google.cloud import storage
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
-from sklearn.inspection import permutation_importance
+from sklearn.inspection import permutation_importance, PartialDependenceDisplay
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
@@ -42,6 +46,14 @@ def _write_csv_to_gcs(client: storage.Client, bucket: str, key: str, df: pd.Data
     b = client.bucket(bucket)
     blob = b.blob(key)
     blob.upload_from_string(df.to_csv(index=False), content_type="text/csv")
+
+
+def _upload_file_to_gcs(
+    client: storage.Client, bucket: str, key: str, local_path: str, content_type: str
+) -> None:
+    b = client.bucket(bucket)
+    blob = b.blob(key)
+    blob.upload_from_filename(local_path, content_type=content_type)
 
 
 def _clean_numeric(s: pd.Series) -> pd.Series:
@@ -186,6 +198,7 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
     bias_today = None
     preds_df = pd.DataFrame()
     perm_df = pd.DataFrame()
+    pdp_temp_files = []
 
     if not holdout_df.empty:
         X_h = holdout_df[feats]
@@ -258,6 +271,28 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
                     }
                 ).sort_values("importance_mean", ascending=False)
 
+                # PDPs: numeric-only, top 3 by permutation importance
+                top_numeric_features = [
+                    feat for feat in perm_df["feature"].tolist()
+                    if feat in num_cols
+                ][:3]
+
+                for feat in top_numeric_features:
+                    fig, ax = plt.subplots(figsize=(6, 4))
+                    PartialDependenceDisplay.from_estimator(
+                        pipe,
+                        X_h_valid,
+                        [feat],
+                        ax=ax,
+                    )
+                    ax.set_title(f"PDP: {feat}")
+
+                    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+                        fig.savefig(tmp.name, bbox_inches="tight")
+                        pdp_temp_files.append((feat, tmp.name))
+
+                    plt.close(fig)
+
     # --- Output path: HOURLY folder structure ---
     now_utc = pd.Timestamp.utcnow().tz_convert("UTC")
     out_dir = f"{OUTPUT_PREFIX}/{now_utc.strftime('%Y%m%d%H')}"
@@ -276,6 +311,17 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
     else:
         logging.info("Dry run or no permutation importance; skip perm write. Would write to gs://%s/%s", GCS_BUCKET, perm_key)
 
+    written_pdp_keys = []
+    if not dry_run and len(pdp_temp_files) > 0:
+        for feat, local_path in pdp_temp_files:
+            safe_feat = feat.replace("/", "_")
+            pdp_key = f"{out_dir}/pdp_{safe_feat}.png"
+            _upload_file_to_gcs(client, GCS_BUCKET, pdp_key, local_path, "image/png")
+            written_pdp_keys.append(pdp_key)
+            logging.info("Wrote PDP to gs://%s/%s", GCS_BUCKET, pdp_key)
+    else:
+        logging.info("Dry run or no PDPs generated; skip PDP writes.")
+
     return {
         "status": "ok",
         "today_local": str(today_local),
@@ -290,6 +336,7 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
         "best_cv_mae": best_cv_mae,
         "preds_key": preds_key,
         "perm_importance_key": perm_key,
+        "pdp_keys": written_pdp_keys,
         "dry_run": dry_run,
         "timezone": TIMEZONE,
     }
