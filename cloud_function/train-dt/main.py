@@ -14,6 +14,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.tree import DecisionTreeRegressor
@@ -151,16 +152,32 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
         ]
     )
 
-    model = DecisionTreeRegressor(
-        max_depth=max_depth,
-        min_samples_leaf=min_samples_leaf,
-        random_state=42,
-    )
-    pipe = Pipeline([("pre", pre), ("model", model)])
-
     X_train = train_df[feats]
     y_train = train_df[target]
-    pipe.fit(X_train, y_train)
+
+    base_model = DecisionTreeRegressor(random_state=42)
+    pipe = Pipeline([("pre", pre), ("model", base_model)])
+
+    param_grid = {
+        "model__max_depth": [6, 10, 14],
+        "model__min_samples_leaf": [5, 10, 20],
+    }
+
+    grid = GridSearchCV(
+        estimator=pipe,
+        param_grid=param_grid,
+        scoring="neg_mean_absolute_error",
+        cv=3,
+        n_jobs=-1,
+    )
+    grid.fit(X_train, y_train)
+
+    pipe = grid.best_estimator_
+    best_params = grid.best_params_
+    best_cv_mae = float(-grid.best_score_)
+
+    logging.info("Best params from grid search: %s", best_params)
+    logging.info("Best CV MAE: %.4f", best_cv_mae)
 
     # ---- Predict/evaluate on today's holdout ----
     mae_today = None
@@ -269,6 +286,8 @@ def run_once(dry_run: bool = False, max_depth: int = 12, min_samples_leaf: int =
         "rmse_today": rmse_today,
         "mape_today": mape_today,
         "bias_today": bias_today,
+        "best_params": best_params,
+        "best_cv_mae": best_cv_mae,
         "preds_key": preds_key,
         "perm_importance_key": perm_key,
         "dry_run": dry_run,
