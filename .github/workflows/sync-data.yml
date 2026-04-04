@@ -52,6 +52,7 @@ jobs:
 
           mkdir -p "${OUTPUT_DIR}/preds"
           mkdir -p "${OUTPUT_DIR}/perm_importance"
+          mkdir -p "${OUTPUT_DIR}/pdp"
 
           PREDS_GCS_PATH="gs://${BUCKET_NAME}/${GCS_PREDS_PREFIX}/${LATEST_RUN_ID}/preds.csv"
           PREDS_LOCAL_PATH="${OUTPUT_DIR}/preds/${LATEST_RUN_ID}-preds.csv"
@@ -77,6 +78,21 @@ jobs:
             echo "No perm_importance.csv found for latest run"
           fi
 
+          PDP_MATCHES=$(gsutil ls "gs://${BUCKET_NAME}/${GCS_PREDS_PREFIX}/${LATEST_RUN_ID}/pdp_*.png" 2>/dev/null || true)
+
+          if [[ -n "$PDP_MATCHES" ]]; then
+            while IFS= read -r file; do
+              [[ -z "$file" ]] && continue
+              base=$(basename "$file")
+              gsutil cp "$file" "${OUTPUT_DIR}/pdp/${LATEST_RUN_ID}-${base}"
+            done <<< "$PDP_MATCHES"
+            echo "pdp_found=true" >> "$GITHUB_OUTPUT"
+            echo "Downloaded PDP png files"
+          else
+            echo "pdp_found=false" >> "$GITHUB_OUTPUT"
+            echo "No PDP png files found for latest run"
+          fi
+
       - name: Commit and Push New Files
         if: success()
         shell: bash
@@ -89,6 +105,7 @@ jobs:
           RUN_ID="${{ steps.download_artifacts.outputs.run_id }}"
           PREDS_FILE="${{ steps.download_artifacts.outputs.preds_file }}"
           PERM_FILE="${{ steps.download_artifacts.outputs.perm_file }}"
+          PDP_FOUND="${{ steps.download_artifacts.outputs.pdp_found }}"
 
           if [[ -n "$PREDS_FILE" ]]; then
             git add "${{ env.OUTPUT_DIR }}/preds/$PREDS_FILE"
@@ -96,6 +113,10 @@ jobs:
 
           if [[ -n "$PERM_FILE" ]]; then
             git add "${{ env.OUTPUT_DIR }}/perm_importance/$PERM_FILE"
+          fi
+
+          if [[ "$PDP_FOUND" == "true" ]]; then
+            git add "${{ env.OUTPUT_DIR }}/pdp/"
           fi
 
           if git diff --cached --quiet; then
