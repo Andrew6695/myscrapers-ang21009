@@ -1,0 +1,14 @@
+feature,importance_mean,importance_std
+mileage_num,1942.5604825583782,392.8478120352125
+vehicle_age,1659.2719568151151,143.80968998693714
+body_type,282.97749969329,65.29041294439577
+miles_per_year,45.81317629738733,18.3762969684104
+make,0.0,0.0
+transmission,0.0,0.0
+condition,0.0,0.0
+color,0.0,0.0
+model,0.0,0.0
+title_status,0.0,0.0
+drive_type,0.0,0.0
+fuel_type,0.0,0.0
+year_num,0.0,0.0
