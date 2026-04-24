@@ -1,0 +1,32 @@
+post_id,scraped_at,make,model,year,mileage,price,color,condition,transmission,body_type,fuel_type,drive_type,title_status,vehicle_age,miles_per_year,price_per_10k_miles,actual_price,pred_price
+7926295610,2026-04-24T07:00:06Z,volkswagen,tiguan,2016,74000.0,6600.0,white,good,automatic,suv,gas,awd,clean,10,7400.0,891.89,6600.0,11721.59
+7926305942,2026-04-24T07:00:06Z,ford,mustang gt,2001,6793.0,25000.0,yellow,like new,manual,coupe,gas,rwd,clean,25,272.0,36802.59,25000.0,31107.34
+7926305629,2026-04-24T06:00:11Z,mini cooper,countryman s all4 hatchback,2019,129000.0,10885.0,black,excellent,automatic,suv,gas,4wd,clean,7,18429.0,843.8,10885.0,12361.24
+7926386562,2026-04-24T06:00:11Z,subaru,forester 2.5i limited,2015,144211.0,8499.0,silver,good,automatic,suv,gas,4wd,clean,11,13110.0,589.34,8499.0,7233.39
+7926354442,2026-04-24T05:00:05Z,hyundai,sonata,2013,157000.0,5500.0,white,excellent,automatic,,gas,,clean,13,12077.0,350.32,5500.0,5551.85
+7926731711,2026-04-24T07:00:06Z,chevrolet,chevelle ss,1967,500.0,75000.0,blue,excellent,manual,coupe,gas,rwd,clean,59,8.0,1500000.0,75000.0,62828.97
+7926963638,2026-04-24T05:00:05Z,dodge,neon,2002,150000.0,,,,automatic,,gas,,clean,24,6250.0,,,3209.79
+7926958705,2026-04-24T07:00:06Z,chevrolet,traverse,2015,97734.0,8990.0,white,used,automatic,suv,gas,awd,clean,11,8885.0,919.84,8990.0,12549.74
+7926981140,2026-04-24T07:00:06Z,ford,transit 250,2017,77000.0,20000.0,white,like new,automatic,van,gas,rwd,clean,9,8556.0,2597.4,20000.0,18339.53
+7926372867,2026-04-24T05:00:05Z,vw,buggy,1978,,1200.0,white,needs complete restoration,manual,dune buggy,gas,,clean,48,,,1200.0,8152.65
+7927044268,2026-04-24T07:00:06Z,freightliner,m2 106,2014,195000.0,65000.0,,excellent,automatic,,diesel,,clean,12,16250.0,3333.33,65000.0,6412.69
+7927039581,2026-04-24T07:00:06Z,subaru,outback 2.5i,2013,122750.0,6250.0,blue,excellent,automatic,hatchback,gas,4wd,clean,13,9442.0,509.16,6250.0,8863.48
+7927028187,2026-04-24T07:00:06Z,ford,fiesta se,2019,30155.0,8950.0,grey,excellent,automatic,hatchback,gas,fwd,clean,7,4308.0,2968.0,8950.0,5928.66
+7927197968,2026-04-24T07:00:06Z,toyota,solara,2008,189000.0,4700.0,,good,automatic,convertible,gas,fwd,clean,18,10500.0,248.68,4700.0,4669.09
+7927195284,2026-04-24T05:00:05Z,chevrolet,traverse ls,2018,103220.0,9499.0,grey,good,automatic,suv,gas,4wd,clean,8,12902.0,920.27,9499.0,10506.54
+7927361501,2026-04-24T05:00:05Z,pontiac,can-am,1977,87000.0,35000.0,white,good,automatic,coupe,gas,rwd,clean,49,1776.0,4022.99,35000.0,21006.49
+7927507060,2026-04-24T05:00:05Z,chevrolet,corvette,1964,2700.0,85000.0,nasau blue,like new,manual,coupe,gas,rwd,clean,62,44.0,314814.81,85000.0,62106.82
+7927511121,2026-04-24T05:00:05Z,volkswagen,r32,2008,212208.0,6800.0,grey,good,automatic,hatchback,gas,4wd,clean,18,11789.0,320.44,6800.0,4775.72
+7927665179,2026-04-24T05:00:05Z,ford,f-150,1999,151234.0,4900.0,black,good,automatic,truck,gas,4wd,clean,27,5601.0,324.0,4900.0,5428.17
+7927710951,2026-04-24T07:00:06Z,chevy,silverado 1500,2016,90000.0,2000.0,blue,like new,automatic,pickup,gas,4wd,clean,10,9000.0,222.22,2000.0,2367.93
+7927692237,2026-04-24T05:00:05Z,tesla,model y,2021,61000.0,5000.0,white,like new,automatic,wagon,electric,4wd,clean,5,12200.0,819.67,5000.0,6060.65
+7927718194,2026-04-24T05:00:05Z,nissan,rogue sport,2018,126300.0,11800.0,black,,automatic,sport utility,gas,awd,clean,8,15788.0,934.28,11800.0,12332.38
+7927786239,2026-04-24T07:00:06Z,nissan,frontier,2009,79780.0,10450.0,black,excellent,automatic,pickup,gas,4wd,clean,17,4693.0,1309.85,10450.0,8044.86
+7927856282,2026-04-24T05:00:05Z,bmw,328i x-drive,2013,113000.0,7985.0,black,good,automatic,sedan,gas,4wd,clean,13,8692.0,706.64,7985.0,7554.38
+7927942256,2026-04-24T05:00:05Z,ford,fusion,2015,92276.0,10850.0,black,used,automatic,sedan,gas,awd,clean,11,8389.0,1175.82,10850.0,10932.47
+7927901063,2026-04-24T05:00:05Z,tesla,model y,2021,61000.0,5000.0,white,like new,automatic,wagon,electric,4wd,clean,5,12200.0,819.67,5000.0,6060.65
+7927910615,2026-04-24T05:00:05Z,jeep,grand cherokee,2020,97000.0,23500.0,white,like new,automatic,suv,gas,4wd,clean,6,16167.0,2422.68,23500.0,17820.63
+7927872263,2026-04-24T05:00:05Z,volvo,xc60,2015,129000.0,8885.0,luminous sand metallic,excellent,automatic,suv,gas,4wd,clean,11,11727.0,688.76,8885.0,8185.93
+7927901153,2026-04-24T07:00:06Z,chevy,silverado 1500,2016,90000.0,2000.0,blue,like new,automatic,pickup,gas,4wd,clean,10,9000.0,222.22,2000.0,2367.93
+7927941966,2026-04-24T05:00:05Z,chevrolet,chevelle,1966,59985.0,69500.0,grey,used,automatic,coupe,gas,,clean,60,1000.0,11586.23,69500.0,64575.88
+7927900860,2026-04-24T05:00:05Z,toyota,camry,2018,33000.0,2000.0,white,like new,automatic,sedan,gas,fwd,clean,8,4125.0,606.06,2000.0,2349.0
