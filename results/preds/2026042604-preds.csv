@@ -1,0 +1,12 @@
+post_id,scraped_at,make,model,year,mileage,price,color,condition,transmission,body_type,fuel_type,drive_type,title_status,vehicle_age,miles_per_year,price_per_10k_miles,actual_price,pred_price
+7927361501,2026-04-26T04:00:37Z,pontiac,can-am,1977,87000.0,35000.0,white,good,automatic,coupe,gas,rwd,clean,49,1776.0,4022.99,35000.0,21831.25
+7927507060,2026-04-26T04:00:37Z,chevrolet,corvette,1964,2700.0,85000.0,blue,like new,manual,coupe,gas,rwd,clean,62,44.0,314814.81,85000.0,57590.4
+7927718802,2026-04-26T04:00:37Z,fiat,500 pop,2012,37851.0,7999.0,blue,excellent,manual,hatchback,gas,fwd,clean,14,2704.0,2113.29,7999.0,7250.3
+7927856282,2026-04-26T04:00:37Z,bmw,328i x-drive awd sedan,2013,113000.0,7985.0,black,good,automatic,sedan,gas,awd,clean,13,8692.0,706.64,7985.0,8216.51
+7927886686,2026-04-26T04:00:37Z,jeep,patriot,2016,151000.0,4500.0,red,excellent,automatic,suv,gas,4wd,clean,10,15100.0,298.01,4500.0,7635.17
+7927856439,2026-04-26T04:00:37Z,subaru,outback limited,2014,128000.0,7985.0,blue,good,automatic,suv,gas,awd,clean,12,10667.0,623.83,7985.0,8731.4
+7927941966,2026-04-26T04:00:37Z,chevrolet,chevelle,1966,59985.0,69500.0,grey,used,automatic,coupe,gas,,clean,60,1000.0,11586.23,69500.0,64075.5
+7928008565,2026-04-26T04:00:37Z,hyundai,santa fe,2010,150000.0,5500.0,,excellent,automatic,suv,gas,4wd,clean,16,9375.0,366.67,5500.0,6562.7
+7928044037,2026-04-26T04:00:37Z,chevy,silverado 1500,2023,53400.0,41500.0,red,like new,automatic,pickup,gas,4wd,clean,3,17800.0,7771.54,41500.0,23925.61
+7927944409,2026-04-26T04:00:37Z,hyundai,tucson,2013,135014.0,8990.0,blue,,automatic,suv,gas,4wd,clean,13,10386.0,665.86,8990.0,6265.53
+7928122794,2026-04-26T04:00:37Z,toyota,camry se,2022,71200.0,21500.0,grey,excellent,automatic,sedan,gas,fwd,clean,4,17800.0,3019.66,21500.0,11543.49
