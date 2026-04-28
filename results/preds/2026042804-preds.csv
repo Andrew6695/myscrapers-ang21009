@@ -1,0 +1,9 @@
+post_id,scraped_at,make,model,year,mileage,price,color,condition,transmission,body_type,fuel_type,drive_type,title_status,vehicle_age,miles_per_year,price_per_10k_miles,actual_price,pred_price
+7927886686,2026-04-28T04:00:35Z,jeep,patriot,2016,151000.0,4500.0,red,excellent,automatic,suv,gas,4wd,clean,10,15100.0,298.01,4500.0,7475.38
+7927942225,2026-04-28T04:00:35Z,audi,a4,2019,73327.0,15900.0,black,used,automatic,sedan,gas,,clean,7,10475.0,2168.37,15900.0,15157.92
+7927868905,2026-04-28T04:00:35Z,jeep,wrangler sport,2014,163000.0,7900.0,silver,excellent,manual,suv,gas,4wd,clean,12,13583.0,484.66,7900.0,7378.04
+7928008565,2026-04-28T04:00:35Z,hyundai,santa fe,2010,150000.0,5500.0,,excellent,automatic,suv,gas,4wd,clean,16,9375.0,366.67,5500.0,6577.62
+7927950554,2026-04-28T04:00:35Z,chrysler,town & country,2015,51345.0,28900.0,white,pre-owned,automatic,minivan,gas,fwd,clean,11,4668.0,5628.59,28900.0,20937.98
+7928429713,2026-04-28T04:00:35Z,chevrolet,silverado 1500,2013,156467.0,6800.0,white,good,automatic,pickup,gas,4wd,clean,13,12036.0,434.6,6800.0,7459.32
+7928522771,2026-04-28T04:00:35Z,subaru,crosstrek 2.0i premium,2018,188779.0,6900.0,black,like new,automatic,hatchback,gas,4wd,clean,8,23597.0,365.51,6900.0,8224.61
+7928523069,2026-04-28T04:00:35Z,toyota,camry le,2012,160899.0,8500.0,red,like new,automatic,sedan,gas,fwd,clean,14,11493.0,528.28,8500.0,7353.9
